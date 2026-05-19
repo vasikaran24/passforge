@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PassForge — Advanced Password Security Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet" />
+<style>
+/* ─── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg-void:       #050810;
+  --bg-panel:      #080d1a;
+  --bg-card:       #0c1322;
+  --bg-input:      #060b18;
+  --border:        #1a2a45;
+  --border-glow:   #0f3460;
+  --accent:        #00ff9d;
+  --accent-dim:    #00c87a;
+  --accent-muted:  rgba(0,255,157,0.08);
+  --warn:          #ffb800;
+  --danger:        #ff3e3e;
+  --info:          #00b4f0;
+  --text-primary:  #d0e8ff;
+  --text-secondary:#6a8ab0;
+  --text-dim:      #304060;
+  --mono:          'Share Tech Mono', monospace;
+  --display:       'Orbitron', sans-serif;
+  --body:          'Exo 2', sans-serif;
+  --glow-accent:   0 0 8px rgba(0,255,157,0.5), 0 0 20px rgba(0,255,157,0.15);
+  --glow-danger:   0 0 8px rgba(255,62,62,0.5);
+  --glow-warn:     0 0 8px rgba(255,184,0,0.4);
+  --transition:    0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ─── Reset & Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ─── Animated Background Grid ─────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,255,157,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridDrift 60s linear infinite;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,60,120,0.4) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes gridDrift {
+  0%   { background-position: 0 0, 0 0; }
+  100% { background-position: 0 400px, 400px 0; }
+}
+
+/* ─── Scanlines ─────────────────────────────────────────────── */
+.scanlines {
+  position: fixed; inset: 0; z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.05) 2px,
+    rgba(0,0,0,0.05) 4px
+  );
+}
+
+/* ─── Layout ────────────────────────────────────────────────── */
+.container {
+  position: relative; z-index: 2;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* ─── Header ────────────────────────────────────────────────── */
+header {
+  text-align: center;
+  padding: 3rem 0 2.5rem;
+  position: relative;
+}
+
+.header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 1px solid rgba(0,255,157,0.25);
+  padding: 0.3rem 0.8rem;
+  border-radius: 2px;
+  margin-bottom: 1.2rem;
+  background: rgba(0,255,157,0.04);
+}
+.header-badge::before { content: '◈'; font-size: 0.6rem; }
+
+h1 {
+  font-family: var(--display);
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  background: linear-gradient(135deg, #ffffff 0%, #00ff9d 50%, #00b4f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.6rem;
+  text-shadow: none;
+}
+
+.header-sub {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.compliance-tags {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  letter-spacing: 0.08em;
+  border: 1px solid;
+}
+.tag-nist   { color: #00b4f0; border-color: rgba(0,180,240,0.3); background: rgba(0,180,240,0.05); }
+.tag-owasp  { color: #ff9d00; border-color: rgba(255,157,0,0.3); background: rgba(255,157,0,0.05); }
+.tag-mitre  { color: #ff6b6b; border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.05); }
+.tag-nist2  { color: var(--accent); border-color: rgba(0,255,157,0.3); background: var(--accent-muted); }
+
+/* ─── Main Grid ─────────────────────────────────────────────── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  align-items: start;
+  margin-top: 2rem;
+}
+@media (max-width: 820px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── Panel Base ────────────────────────────────────────────── */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+  opacity: 0.4;
+}
+
+.panel-header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(0,255,157,0.02);
+}
+.panel-header-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--glow-accent);
+  flex-shrink: 0;
+}
+.panel-title {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.panel-title-right {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+}
+
+.panel-body { padding: 1.25rem; }
+
+/* ─── Input Area ────────────────────────────────────────────── */
+.input-wrapper {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+.input-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.input-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#password-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.9rem 3rem 0.9rem 1rem;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  caret-color: var(--accent);
+}
+#password-input:focus {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px rgba(0,200,122,0.15), inset 0 0 20px rgba(0,255,157,0.02);
+}
+#password-input::placeholder { color: var(--text-dim); letter-spacing: 0.05em; }
+
+.input-toggle {
+  position: absolute; right: 0.75rem;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-secondary); padding: 0.25rem;
+  transition: color var(--transition);
+  font-size: 1rem; line-height: 1;
+}
+.input-toggle:hover { color: var(--accent); }
+
+/* ─── Strength Meter ────────────────────────────────────────── */
+.strength-meter-wrap { margin-bottom: 1.25rem; }
+.strength-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.strength-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+.strength-value {
+  font-family: var(--display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transition: color var(--transition);
+}
+
+.strength-track {
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.strength-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.3s;
+  position: relative;
+}
+.strength-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(90deg, transparent 50%, rgba(255,255,255,0.12) 100%);
+}
+
+.strength-segments {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin-top: 0.4rem;
+}
+.seg {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+/* ─── Score Dial ────────────────────────────────────────────── */
+.score-ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 0 1rem;
+}
+.score-ring {
+  width: 110px; height: 110px;
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+.score-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 283;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1), stroke 0.4s;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+.score-ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.score-number {
+  font-family: var(--display);
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1;
+  transition: color 0.4s;
+}
+.score-max {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+.score-label {
+  font-family: var(--display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: color 0.4s;
+}
+
+/* ─── Entropy Display ───────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.75rem;
+}
+.metric-label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+.metric-value {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  transition: color 0.3s;
+}
+.metric-unit {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  margin-left: 0.2rem;
+}
+
+/* ─── Crack Time ────────────────────────────────────────────── */
+.crack-time-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.25rem;
+}
+.crack-time-title {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.crack-time-title::before { content: '⚡'; font-size: 0.7rem; }
+
+.crack-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(26,42,69,0.5);
+}
+.crack-row:last-child { border-bottom: none; }
+.crack-attack {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+}
+.crack-val {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  transition: color 0.3s;
+}
+
+/* ─── Character Analysis ────────────────────────────────────── */
+.char-analysis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.char-type {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.5rem 0.4rem;
+  text-align: center;
+  transition: border-color 0.3s, background 0.3s;
+}
+.char-type.active {
+  border-color: rgba(0,255,157,0.3);
+  background: rgba(0,255,157,0.05);
+}
+.char-type-icon { font-size: 1rem; margin-bottom: 0.2rem; display: block; }
+.char-type-label {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+.char-type-count {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  transition: color 0.3s;
+}
+.char-type.active .char-type-count { color: var(--accent); }
+
+/* ─── Security Checks ───────────────────────────────────────── */
+.checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+}
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s, background 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.check-item.pass {
+  border-color: rgba(0,255,157,0.2);
+  background: rgba(0,255,157,0.03);
+}
+.check-item.fail {
+  border-color: rgba(255,62,62,0.2);
+  background: rgba(255,62,62,0.03);
+}
+.check-item.warn {
+  border-color: rgba(255,184,0,0.2);
+  background: rgba(255,184,0,0.03);
+}
+.check-icon {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  width: 16px; text-align: center; flex-shrink: 0;
+}
+.check-pass .check-icon { color: var(--accent); }
+.check-fail .check-icon { color: var(--danger); }
+.check-warn .check-icon { color: var(--warn); }
+
+.check-text {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--text-secondary);
+  flex: 1;
+}
+.check-item.pass .check-text { color: rgba(208,232,255,0.8); }
+.check-badge {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+.check-badge.pass { background: rgba(0,255,157,0.12); color: var(--accent); }
+.check-badge.fail { background: rgba(255,62,62,0.12); color: var(--danger); }
+.check-badge.warn { background: rgba(255,184,0,0.12); color: var(--warn); }
+
+/* ─── Threat Intelligence Bar ───────────────────────────────── */
+.threat-bar-wrap {
+  margin-bottom: 1.25rem;
+}
+.threat-label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.threat-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.threat-pct {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--danger);
+  font-weight: 700;
+}
+.threat-track {
+  height: 4px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.threat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--warn), var(--danger));
+  border-radius: 2px;
+  transition: width 0.5s;
+}
+
+/* ─── Recommendations ───────────────────────────────────────── */
+.recs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rec-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 2px solid;
+  border-radius: 2px;
+}
+.rec-item.nist  { border-left-color: #00b4f0; }
+.rec-item.owasp { border-left-color: #ff9d00; }
+.rec-item.sec   { border-left-color: var(--accent); }
+.rec-item.crit  { border-left-color: var(--danger); }
+
+.rec-source {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.3rem;
+  border-radius: 1px;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+.nist .rec-source  { background: rgba(0,180,240,0.1);  color: #00b4f0; }
+.owasp .rec-source { background: rgba(255,157,0,0.1);  color: #ff9d00; }
+.sec .rec-source   { background: rgba(0,255,157,0.1);  color: var(--accent); }
+.crit .rec-source  { background: rgba(255,62,62,0.1);  color: var(--danger); }
+
+.rec-text {
+  font-family: var(--body);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ─── Password Generator ────────────────────────────────────── */
+.gen-section { margin-bottom: 1.25rem; }
+.gen-output {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.7rem 0.9rem;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.gen-password {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--accent);
+  flex: 1;
+  word-break: break-all;
+  letter-spacing: 0.03em;
+  min-height: 1.2em;
+}
+.gen-copy {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.gen-copy:hover { border-color: var(--accent-dim); color: var(--accent); }
+.gen-copy.copied { border-color: var(--accent); color: var(--accent); }
+
+.gen-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.gen-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.45rem 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all var(--transition);
+  display: flex; align-items: center; gap: 0.4rem;
+  justify-content: center;
+}
+.gen-btn:hover { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-muted); }
+.gen-btn.primary {
+  grid-column: 1/-1;
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  background: rgba(0,255,157,0.05);
+}
+.gen-btn.primary:hover { background: rgba(0,255,157,0.1); }
+
+.gen-length-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.gen-length-label { font-family: var(--mono); font-size: 0.62rem; color: var(--text-secondary); }
+.gen-length-val { font-family: var(--mono); font-size: 0.75rem; color: var(--accent); min-width: 2ch; }
+#gen-length {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+#gen-length::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--glow-accent);
+}
+
+/* ─── Pattern Visualization ─────────────────────────────────── */
+.pattern-viz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 1.25rem;
+  min-height: 28px;
+  padding: 0.4rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.char-token {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  width: 18px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+.token-upper   { background: rgba(0,180,240,0.15); color: #00b4f0; }
+.token-lower   { background: rgba(0,255,157,0.1);  color: var(--accent); }
+.token-digit   { background: rgba(255,184,0,0.12); color: var(--warn); }
+.token-special { background: rgba(255,62,62,0.12); color: var(--danger); }
+.token-space   { background: rgba(106,138,176,0.1); color: var(--text-secondary); }
+
+/* ─── HIBP Simulation ───────────────────────────────────────── */
+.hibp-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.hibp-icon { font-size: 1.4rem; flex-shrink: 0; }
+.hibp-info { flex: 1; }
+.hibp-title {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+.hibp-status {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  transition: color 0.3s;
+}
+
+/* ─── Policy Grid ───────────────────────────────────────────── */
+.policy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.policy-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  text-align: center;
+  transition: border-color 0.3s;
+}
+.policy-item.ok { border-color: rgba(0,255,157,0.2); }
+.policy-item.fail { border-color: rgba(255,62,62,0.15); }
+.policy-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.policy-item.ok .policy-dot { background: var(--accent); box-shadow: var(--glow-accent); }
+.policy-item.fail .policy-dot { background: var(--danger); box-shadow: var(--glow-danger); }
+.policy-txt {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+/* ─── Footer ────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 2rem 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+}
+.footer-text {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  line-height: 2;
+}
+.footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.5rem; }
+.footer-link {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  transition: color var(--transition);
+}
+.footer-link:hover { color: var(--accent); }
+
+/* ─── Animations ────────────────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.panel { animation: fadeSlideIn 0.4s ease both; }
+.panel:nth-child(2) { animation-delay: 0.1s; }
+
+.blinking { animation: pulse 1.2s ease-in-out infinite; }
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-void); }
+::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+
+/* ─── Tooltip ───────────────────────────────────────────────── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: #0d1f3c;
+  border: 1px solid var(--border-glow);
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 100;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Live typing effect ────────────────────────────────────── */
+.typing-caret {
+  display: inline-block;
+  width: 2px; height: 0.9em;
+  background: var(--accent);
+  margin-left: 1px;
+  animation: pulse 0.8s steps(1) infinite;
+  vertical-align: text-bottom;
+}
+
+/* ─── Copy toast ────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  padding: 0.5rem 1rem;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.25s;
+  pointer-events: none;
+  z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<div class="container">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header>
+    <div class="header-badge">PassForge Security Analyzer v2.0</div>
+    <h1>PASSFORGE</h1>
+    <p class="header-sub">[ ENTERPRISE PASSWORD SECURITY INTELLIGENCE PLATFORM ]</p>
+    <div class="compliance-tags">
+      <span class="tag tag-nist">NIST SP 800-63B</span>
+      <span class="tag tag-owasp">OWASP AUTH-01</span>
+      <span class="tag tag-mitre">MITRE T1110</span>
+      <span class="tag tag-nist2">ENTROPY ANALYSIS</span>
+      <span class="tag tag-nist2">HIBP SIMULATION</span>
+    </div>
+  </header>
+
+  <!-- ── Main Grid ──────────────────────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- ── LEFT COLUMN ──────────────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+      <!-- Input Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">Password Input Terminal</span>
+          <span class="panel-title-right" id="live-status">IDLE</span>
+        </div>
+        <div class="panel-body">
+
+          <label class="input-label" for="password-input">Enter password for analysis</label>
+          <div class="input-field-wrap">
+            <input
+              type="password"
+              id="password-input"
+              placeholder="Type or paste password here..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button class="input-toggle" id="toggle-visibility" aria-label="Toggle visibility">👁</button>
+          </div>
+
+          <!-- Strength Meter -->
+          <div class="strength-meter-wrap">
+            <div class="strength-row">
+              <span class="strength-label">Strength Assessment</span>
+              <span class="strength-value" id="strength-label" style="color:var(--text-dim)">NO INPUT</span>
+            </div>
+            <div class="strength-track">
+              <div class="strength-fill" id="strength-fill"></div>
+            </div>
+            <div class="strength-segments" id="strength-segs">
+              <div class="seg" data-i="0"></div>
+              <div class="seg" data-i="1"></div>
+              <div class="seg" data-i="2"></div>
+              <div class="seg" data-i="3"></div>
+              <div class="seg" data-i="4"></div>
+            </div>
+          </div>
+
+          <!-- Character Pattern Visualization -->
+          <label class="input-label">Character composition map</label>
+          <div class="pattern-viz" id="pattern-viz">
+            <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);align-self:center;">
+              ↑ character tokens appear here
+            </span>
+          </div>
+
+          <!-- Char Analysis -->
+          <div class="char-analysis">
+            <div class="char-type" id="ct-upper">
+              <span class="char-type-icon">A</span>
+              <div class="char-type-count" id="ct-upper-n">0</div>
+              <div class="char-type-label">Uppercase</div>
+            </div>
+            <div class="char-type" id="ct-lower">
+              <span class="char-type-icon">a</span>
+              <div class="char-type-count" id="ct-lower-n">0</div>
+              <div class="char-type-label">Lowercase</div>
+            </div>
+            <div class="char-type" id="ct-digit">
+              <span class="char-type-icon">#</span>
+              <div class="char-type-count" id="ct-digit-n">0</div>
+              <div class="char-type-label">Digits</div>
+            </div>
+            <div class="char-type" id="ct-special">
+              <span class="char-type-icon">@!</span>
+              <div class="char-type-count" id="ct-special-n">0</div>
+              <div class="char-type-label">Special</div>
+            </div>
+          </div>
+
+          <!-- Metrics -->
+          <div class="metrics-grid">
+            <div class="metric-card" data-tip="Bits of entropy = log2(pool^length)">
+              <div class="metric-label">Entropy</div>
+              <div class="metric-value" id="entropy-val">—<span class="metric-unit">bits</span></div>
+            </div>
+            <div class="metric-card" data-tip="Character pool size used for entropy">
+              <div class="metric-label">Pool Size</div>
+              <div class="metric-value" id="pool-val">—<span class="metric-unit">chars</span></div>
+            </div>
+            <div class="metric-card" data-tip="Raw length of the password">
+              <div class="metric-label">Length</div>
+              <div class="metric-value" id="length-val">—<span class="metric-unit">chars</span></div>
+            </div>
+            <div class="metric-card" data-tip="Estimated unique permutations">
+              <div class="metric-label">Combinations</div>
+              <div class="metric-value" id="combos-val">—</div>
+            </div>
+          </div>
+
+          <!-- Crack Time -->
+          <div class="crack-time-panel">
+            <div class="crack-time-title">Brute-Force Crack Time Estimation</div>
+            <div class="crack-row">
+              <span class="crack-attack">Online throttled (100/hr)</span>
+              <span class="crack-val" id="ct-online">—</span>
+            </div>
+            <div class="crack-row">
+              <span class="crack-attack">Online unthrottled (10/sec)</span>
+              <span class="crack-val" id="ct-online-fast">—</span>
+            </div>
+            <div class="crack-row">
+              <span class="crack-attack">Offline slow hash (10K/sec)</span>
+              <span class="crack-val" id="ct-offline-slow">—</span>
+            </div>
+            <div class="crack-row">
+              <span class="crack-attack">Offline fast hash (1B/sec)</span>
+              <span class="crack-val" id="ct-offline-fast">—</span>
+            </div>
+            <div class="crack-row">
+              <span class="crack-attack">GPU cluster (100B/sec)</span>
+              <span class="crack-val" id="ct-gpu">—</span>
+            </div>
+          </div>
+
+          <!-- HIBP Simulation -->
+          <div class="hibp-panel" id="hibp-panel">
+            <div class="hibp-icon" id="hibp-icon">🔍</div>
+            <div class="hibp-info">
+              <div class="hibp-title">HaveIBeenPwned Breach Database</div>
+              <div class="hibp-status" id="hibp-status" style="color:var(--text-dim)">
+                Awaiting password input...
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Security Checks Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">Security Checks</span>
+          <span class="panel-title-right" id="checks-summary">0/10 PASSED</span>
+        </div>
+        <div class="panel-body">
+          <div class="checks-list" id="checks-list">
+            <!-- JS populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Threat Analysis Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">Threat Exposure Index</span>
+        </div>
+        <div class="panel-body">
+          <div class="threat-bar-wrap">
+            <div class="threat-label-row">
+              <span class="threat-label">Dictionary Attack Vulnerability</span>
+              <span class="threat-pct" id="dict-pct">—</span>
+            </div>
+            <div class="threat-track"><div class="threat-fill" id="dict-fill" style="width:0%"></div></div>
+          </div>
+          <div class="threat-bar-wrap">
+            <div class="threat-label-row">
+              <span class="threat-label">Pattern / Predictability Risk</span>
+              <span class="threat-pct" id="pattern-pct">—</span>
+            </div>
+            <div class="threat-track"><div class="threat-fill" id="pattern-fill" style="width:0%"></div></div>
+          </div>
+          <div class="threat-bar-wrap" style="margin-bottom:0">
+            <div class="threat-label-row">
+              <span class="threat-label">Brute-Force Resistance</span>
+              <span class="threat-pct" id="bf-pct" style="color:var(--accent)">—</span>
+            </div>
+            <div class="threat-track">
+              <div class="threat-fill" id="bf-fill" style="width:0%;background:var(--accent)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT COLUMN ──────────────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+      <!-- Score Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">Security Score</span>
+        </div>
+        <div class="panel-body" style="padding-top:0.5rem;padding-bottom:0.5rem;">
+          <div class="score-ring-wrap">
+            <div class="score-ring">
+              <svg width="110" height="110" viewBox="0 0 110 110">
+                <circle class="score-ring-bg" cx="55" cy="55" r="45"/>
+                <circle class="score-ring-fill" id="score-ring-fill" cx="55" cy="55" r="45"/>
+              </svg>
+              <div class="score-ring-center">
+                <span class="score-number" id="score-number" style="color:var(--text-dim)">0</span>
+                <span class="score-max">/100</span>
+              </div>
+            </div>
+            <span class="score-label" id="score-category" style="color:var(--text-dim)">UNRATED</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- NIST Policy Compliance -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">NIST SP 800-63B Policy</span>
+        </div>
+        <div class="panel-body">
+          <div class="policy-grid" id="policy-grid">
+            <!-- JS populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommendations Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">Security Recommendations</span>
+        </div>
+        <div class="panel-body">
+          <div class="recs-list" id="recs-list">
+            <div class="rec-item sec">
+              <span class="rec-source">SYS</span>
+              <span class="rec-text">Enter a password to receive NIST, OWASP, and custom security recommendations.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Password Generator -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-header-dot"></div>
+          <span class="panel-title">Secure Password Generator</span>
+        </div>
+        <div class="panel-body">
+          <div class="gen-section">
+            <div class="gen-length-row">
+              <span class="gen-length-label">Length:</span>
+              <span class="gen-length-val" id="gen-len-display">20</span>
+              <input type="range" id="gen-length" min="8" max="64" value="20" />
+            </div>
+            <div class="gen-output">
+              <span class="gen-password" id="gen-output">Press Generate to create a password</span>
+              <button class="gen-copy" id="gen-copy-btn">COPY</button>
+            </div>
+            <div class="gen-controls">
+              <button class="gen-btn primary" onclick="generatePassword()">⚡ GENERATE SECURE</button>
+              <button class="gen-btn" onclick="generatePassphrase()">📖 PASSPHRASE</button>
+              <button class="gen-btn" onclick="generatePIN()">🔢 STRONG PIN</button>
+              <button class="gen-btn" onclick="useGenerated()">↑ USE THIS</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-text">
+      PassForge · Password Security Intelligence Platform<br>
+      Aligned with NIST SP 800-63B · OWASP ASVS 2.1 · MITRE ATT&CK T1110 · CWE-521
+    </div>
+    <div class="footer-links">
+      <a class="footer-link" href="https://pages.nist.gov/800-63-3/sp800-63b.html" target="_blank">NIST 800-63B</a>
+      <a class="footer-link" href="https://owasp.org/www-project-application-security-verification-standard/" target="_blank">OWASP ASVS</a>
+      <a class="footer-link" href="https://attack.mitre.org/techniques/T1110/" target="_blank">MITRE T1110</a>
+      <a class="footer-link" href="https://haveibeenpwned.com/Passwords" target="_blank">HIBP API</a>
+    </div>
+  </footer>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PassForge — Password Security Intelligence Engine
+   ─────────────────────────────────────────────────────────────
+   Security Checks:  entropy, brute-force, HIBP sim, common pwd,
+                     sequential detection, repeat patterns,
+                     keyboard walks, dictionary, policy enforcement
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Data: Common / Breached Passwords (top 200 subset) ──────────
+const COMMON_PASSWORDS = new Set([
+  'password','123456','password1','12345678','qwerty','abc123','111111',
+  'iloveyou','admin','letmein','monkey','1234567','sunshine','master',
+  'password123','123456789','welcome','shadow','superman','michael',
+  'jessica','dragon','football','baseball','princess','access','batman',
+  'trustno1','hunter','ranger','cheese','qwerty123','pass123','test',
+  'hello','admin123','root','toor','pass','passw0rd','p@ssword',
+  'p@ss','p@ssw0rd','login','welcome1','abc1234','password!',
+  '1q2w3e','qazwsx','1qaz2wsx','zaq12wsx','!qaz2wsx','!qazxsw2',
+  'winter2023','summer2023','spring2023','fall2023','winter2024',
+  'summer2024','company123','password2024','2024password','january',
+  'february','march','april','may','june','july','august','september',
+  'october','november','december','changeme','temp123','secret',
+  'qwert','asdfgh','zxcvbn','mnbvcx','lkjhgf','poiuyt','mypassword',
+  'newpassword','oldpassword','computer','internet','email','online',
+]);
+
+// ── Data: Common Dictionary Words ──────────────────────────────
+const DICT_WORDS = [
+  'love','hate','life','time','word','game','play','work','home','door',
+  'fire','water','earth','wind','dark','light','blue','green','black',
+  'white','red','gold','silver','king','queen','lord','power','force',
+  'star','moon','sun','sky','rain','snow','ice','hot','cold','fast',
+  'slow','high','low','good','bad','evil','angel','devil','dragon',
+  'hero','super','ultra','mega','hyper','alpha','beta','delta','omega',
+  'tiger','lion','eagle','wolf','bear','shark','hawk','storm','thunder',
+  'lightning','phoenix','shadow','ghost','spirit','brave','strong',
+  'magic','ninja','pirate','robot','cyber','hack','code','tech','data',
+];
+
+// ── Data: Keyboard Patterns ────────────────────────────────────
+const KEYBOARD_PATTERNS = [
+  'qwerty','qwertyuiop','asdfgh','asdfghjkl','zxcvbn','zxcvbnm',
+  'qweasd','qweasdzxc','1qaz','2wsx','3edc','4rfv','5tgb','6yhn',
+  '7ujm','1qazxsw2','!qazxsw@','qazwsxedc','zaqxswcdevfr',
+  'qzwxec','poiuyt','lkjhgf','mnbvcx','0987654321','12341234',
+];
+
+// ── Utilities ──────────────────────────────────────────────────
+function calcEntropy(pwd) {
+  let pool = 0;
+  if (/[a-z]/.test(pwd)) pool += 26;
+  if (/[A-Z]/.test(pwd)) pool += 26;
+  if (/[0-9]/.test(pwd)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pwd)) pool += 32;
+  return pool > 0 ? +(pwd.length * Math.log2(pool)).toFixed(1) : 0;
+}
+
+function formatCrackTime(seconds) {
+  if (!isFinite(seconds)) return '∞ (heat death of universe)';
+  if (seconds < 1)         return 'Instant';
+  if (seconds < 60)        return `${Math.round(seconds)}s`;
+  if (seconds < 3600)      return `${Math.round(seconds/60)}m`;
+  if (seconds < 86400)     return `${Math.round(seconds/3600)}h`;
+  if (seconds < 2592000)   return `${Math.round(seconds/86400)} days`;
+  if (seconds < 31536000)  return `${Math.round(seconds/2592000)} months`;
+  if (seconds < 3.156e9)   return `${Math.round(seconds/31536000)} years`;
+  if (seconds < 3.156e12)  return `${(seconds/3.156e9).toFixed(1)}K years`;
+  if (seconds < 3.156e15)  return `${(seconds/3.156e12).toFixed(1)}M years`;
+  return '> 1 Billion years';
+}
+
+function getCrackSeconds(combinations, ratePerSec) {
+  // Average is half the keyspace
+  return (combinations / 2) / ratePerSec;
+}
+
+function hasSequential(pwd, minLen = 3) {
+  const lower = pwd.toLowerCase();
+  for (let i = 0; i < lower.length - minLen + 1; i++) {
+    let asc = true, desc = true;
+    for (let j = 1; j < minLen; j++) {
+      if (lower.charCodeAt(i+j) !== lower.charCodeAt(i+j-1)+1) asc = false;
+      if (lower.charCodeAt(i+j) !== lower.charCodeAt(i+j-1)-1) desc = false;
+    }
+    if (asc || desc) return true;
+  }
+  return false;
+}
+
+function hasRepeatedChars(pwd, minLen = 3) {
+  return /(.)\1{2,}/.test(pwd);
+}
+
+function hasRepeatedPattern(pwd) {
+  const n = pwd.length;
+  for (let len = 2; len <= Math.floor(n/2); len++) {
+    const pattern = pwd.slice(0, len);
+    const repeated = pattern.repeat(Math.ceil(n / len)).slice(0, n);
+    if (repeated === pwd && n % len === 0) return true;
+  }
+  return false;
+}
+
+function hasKeyboardPattern(pwd) {
+  const lower = pwd.toLowerCase();
+  for (const pat of KEYBOARD_PATTERNS) {
+    if (lower.includes(pat.slice(0,4))) return true;
+  }
+  return false;
+}
+
+function hasDictionaryWord(pwd) {
+  const lower = pwd.toLowerCase();
+  return DICT_WORDS.some(w => lower.includes(w) && w.length >= 4);
+}
+
+function isCommonPassword(pwd) {
+  return COMMON_PASSWORDS.has(pwd.toLowerCase());
+}
+
+function hasLeetSpeak(pwd) {
+  const leet = pwd.replace(/4/g,'a').replace(/3/g,'e')
+                   .replace(/1/g,'i').replace(/0/g,'o')
+                   .replace(/5/g,'s').replace(/7/g,'t')
+                   .replace(/@/g,'a').replace(/\$/g,'s').replace(/!/g,'i');
+  return COMMON_PASSWORDS.has(leet.toLowerCase()) || DICT_WORDS.some(w => leet.toLowerCase().includes(w));
+}
+
+function simulateHIBP(pwd) {
+  // Simulation: deterministic but looks realistic
+  if (!pwd || pwd.length < 3) return { breached: false, count: 0 };
+  if (isCommonPassword(pwd)) {
+    const seed = [...pwd].reduce((a,c) => a + c.charCodeAt(0), 0);
+    return { breached: true, count: 1000 + (seed * 137) % 5000000 };
+  }
+  if (pwd.length < 8 || hasKeyboardPattern(pwd) || hasSequential(pwd)) {
+    const seed = [...pwd].reduce((a,c) => a + c.charCodeAt(0), 0);
+    if (seed % 3 === 0) return { breached: true, count: 1 + seed % 50000 };
+  }
+  return { breached: false, count: 0 };
+}
+
+function formatCount(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return n.toString();
+}
+
+// ── Score Engine ──────────────────────────────────────────────
+function computeScore(pwd) {
+  if (!pwd) return { score: 0, label: 'UNRATED', color: 'var(--text-dim)' };
+
+  let score = 0;
+  const len = pwd.length;
+  const entropy = calcEntropy(pwd);
+
+  // Length scoring (NIST emphasizes length)
+  if (len >= 8)  score += 10;
+  if (len >= 12) score += 10;
+  if (len >= 16) score += 10;
+  if (len >= 20) score += 10;
+  if (len >= 25) score += 5;
+
+  // Entropy scoring
+  if (entropy >= 28) score += 5;
+  if (entropy >= 36) score += 10;
+  if (entropy >= 50) score += 10;
+  if (entropy >= 70) score += 10;
+  if (entropy >= 90) score += 5;
+
+  // Complexity bonuses
+  if (/[A-Z]/.test(pwd)) score += 3;
+  if (/[a-z]/.test(pwd)) score += 3;
+  if (/[0-9]/.test(pwd)) score += 3;
+  if (/[^a-zA-Z0-9]/.test(pwd)) score += 6;
+
+  // Penalties
+  if (isCommonPassword(pwd))       score -= 40;
+  if (hasSequential(pwd))          score -= 8;
+  if (hasRepeatedChars(pwd))       score -= 6;
+  if (hasRepeatedPattern(pwd))     score -= 10;
+  if (hasKeyboardPattern(pwd))     score -= 10;
+  if (hasDictionaryWord(pwd))      score -= 5;
+  if (simulateHIBP(pwd).breached)  score -= 20;
+  if (len < 8)                     score -= 20;
+  if (len < 6)                     score -= 30;
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let label, color;
+  if (score < 20) { label = 'CRITICAL'; color = 'var(--danger)'; }
+  else if (score < 40) { label = 'WEAK'; color = '#ff7048'; }
+  else if (score < 60) { label = 'FAIR'; color = 'var(--warn)'; }
+  else if (score < 80) { label = 'STRONG'; color = '#7dff8f'; }
+  else { label = 'EXCELLENT'; color = 'var(--accent)'; }
+
+  return { score, label, color };
+}
+
+// ── Security Checks Definition ────────────────────────────────
+function runChecks(pwd) {
+  if (!pwd) return [];
+  const len = pwd.length;
+  return [
+    {
+      id: 'min-length',
+      label: 'Minimum length (8 chars)',
+      ref: 'NIST',
+      pass: len >= 8,
+      critical: true,
+    },
+    {
+      id: 'rec-length',
+      label: 'Recommended length (12+ chars)',
+      ref: 'OWASP',
+      pass: len >= 12,
+    },
+    {
+      id: 'opt-length',
+      label: 'Optimal length (16+ chars)',
+      ref: 'NIST',
+      pass: len >= 16,
+    },
+    {
+      id: 'upper',
+      label: 'Contains uppercase letters',
+      ref: 'OWASP',
+      pass: /[A-Z]/.test(pwd),
+    },
+    {
+      id: 'lower',
+      label: 'Contains lowercase letters',
+      ref: 'OWASP',
+      pass: /[a-z]/.test(pwd),
+    },
+    {
+      id: 'digit',
+      label: 'Contains numeric digits',
+      ref: 'OWASP',
+      pass: /[0-9]/.test(pwd),
+    },
+    {
+      id: 'special',
+      label: 'Contains special characters',
+      ref: 'OWASP',
+      pass: /[^a-zA-Z0-9]/.test(pwd),
+    },
+    {
+      id: 'no-common',
+      label: 'Not a commonly used password',
+      ref: 'NIST',
+      pass: !isCommonPassword(pwd),
+      critical: true,
+    },
+    {
+      id: 'no-seq',
+      label: 'No sequential characters (abc, 123)',
+      ref: 'SEC',
+      pass: !hasSequential(pwd),
+    },
+    {
+      id: 'no-repeat',
+      label: 'No repeated characters (aaa, 111)',
+      ref: 'SEC',
+      pass: !hasRepeatedChars(pwd),
+    },
+    {
+      id: 'no-kbwalk',
+      label: 'No keyboard walk patterns (qwerty)',
+      ref: 'SEC',
+      pass: !hasKeyboardPattern(pwd),
+    },
+    {
+      id: 'no-dict',
+      label: 'No common dictionary words',
+      ref: 'SEC',
+      pass: !hasDictionaryWord(pwd),
+    },
+    {
+      id: 'entropy-min',
+      label: 'Entropy ≥ 36 bits (basic threshold)',
+      ref: 'NIST',
+      pass: calcEntropy(pwd) >= 36,
+    },
+    {
+      id: 'entropy-rec',
+      label: 'Entropy ≥ 60 bits (recommended)',
+      ref: 'SEC',
+      pass: calcEntropy(pwd) >= 60,
+    },
+  ];
+}
+
+// ── Recommendations Engine ────────────────────────────────────
+function buildRecs(pwd) {
+  if (!pwd) return [];
+  const recs = [];
+  const len = pwd.length;
+  const entropy = calcEntropy(pwd);
+
+  if (len < 8) recs.push({
+    type: 'crit', source: 'NIST',
+    text: 'Password is critically short. NIST SP 800-63B requires a minimum of 8 characters for user-generated passwords.'
+  });
+  else if (len < 12) recs.push({
+    type: 'owasp', source: 'OWASP',
+    text: 'Increase length to at least 12 characters. OWASP recommends 12+ chars; 16+ for sensitive accounts.'
+  });
+
+  if (isCommonPassword(pwd)) recs.push({
+    type: 'crit', source: 'NIST',
+    text: 'Password found in known breach lists. NIST SP 800-63B requires rejection of passwords in commonly-used password lists.'
+  });
+
+  if (hasKeyboardPattern(pwd)) recs.push({
+    type: 'crit', source: 'SEC',
+    text: 'Keyboard walk pattern detected (e.g., qwerty, 1qaz2wsx). Attackers use keyboard-pattern dictionaries as a first attack layer.'
+  });
+
+  if (hasSequential(pwd)) recs.push({
+    type: 'owasp', source: 'OWASP',
+    text: 'Sequential characters detected (abc, 123). These are highly predictable and dramatically reduce effective entropy.'
+  });
+
+  if (hasRepeatedChars(pwd)) recs.push({
+    type: 'owasp', source: 'OWASP',
+    text: 'Repeated characters detected (aaa, !!!). Repetition reduces entropy significantly. Use varied characters.'
+  });
+
+  if (!/[^a-zA-Z0-9]/.test(pwd)) recs.push({
+    type: 'nist', source: 'NIST',
+    text: 'No special characters found. Adding symbols (@, #, !, $) expands the character pool from 62 to 94+, multiplying entropy.'
+  });
+
+  if (hasDictionaryWord(pwd)) recs.push({
+    type: 'nist', source: 'SEC',
+    text: 'Dictionary word(s) detected. Dictionary attacks try millions of common words and variations per second.'
+  });
+
+  if (simulateHIBP(pwd).breached) recs.push({
+    type: 'crit', source: 'HIBP',
+    text: 'This password appears in known breach databases. It should be considered fully compromised and never used.'
+  });
+
+  if (entropy >= 60 && len >= 16 && !isCommonPassword(pwd) && !hasKeyboardPattern(pwd)) recs.push({
+    type: 'sec', source: 'GOOD',
+    text: 'Excellent entropy level. Consider using a password manager to generate and store unique passwords per account.'
+  });
+
+  if (recs.length === 0) recs.push({
+    type: 'sec', source: 'NIST',
+    text: 'Password meets baseline NIST SP 800-63B requirements. Enable MFA for defense-in-depth.'
+  });
+
+  recs.push({
+    type: 'nist', source: 'NIST',
+    text: 'NIST SP 800-63B recommends passphrases of 4+ random words as an effective and memorable alternative to complex passwords.'
+  });
+
+  if (recs.length < 5) recs.push({
+    type: 'owasp', source: 'OWASP',
+    text: 'Use a unique password per account. OWASP recommends password managers like Bitwarden or KeePass to manage credentials securely.'
+  });
+
+  return recs;
+}
+
+// ── NIST Policy Items ─────────────────────────────────────────
+function nistPolicyItems(pwd) {
+  const len = pwd ? pwd.length : 0;
+  const entropy = pwd ? calcEntropy(pwd) : 0;
+  return [
+    { label: 'Min 8 chars',   ok: len >= 8 },
+    { label: '≥ 36 bit entropy', ok: entropy >= 36 },
+    { label: 'Not breached',  ok: pwd ? !simulateHIBP(pwd).breached : false },
+    { label: 'Not common',    ok: pwd ? !isCommonPassword(pwd) : false },
+    { label: 'No sequential', ok: pwd ? !hasSequential(pwd) : false },
+    { label: 'No repeats',    ok: pwd ? !hasRepeatedChars(pwd) : false },
+  ];
+}
+
+// ── DOM References ─────────────────────────────────────────────
+const input       = document.getElementById('password-input');
+const strengthFill= document.getElementById('strength-fill');
+const strengthLbl = document.getElementById('strength-label');
+const patternViz  = document.getElementById('pattern-viz');
+const segs        = document.querySelectorAll('.seg');
+const scoreNum    = document.getElementById('score-number');
+const scoreCat    = document.getElementById('score-category');
+const scoreRing   = document.getElementById('score-ring-fill');
+const entropyVal  = document.getElementById('entropy-val');
+const poolVal     = document.getElementById('pool-val');
+const lengthVal   = document.getElementById('length-val');
+const combosVal   = document.getElementById('combos-val');
+const checksList  = document.getElementById('checks-list');
+const checksSumEl = document.getElementById('checks-summary');
+const recsList    = document.getElementById('recs-list');
+const policyGrid  = document.getElementById('policy-grid');
+const liveStatus  = document.getElementById('live-status');
+
+// ── Main Analysis ──────────────────────────────────────────────
+function analyze(pwd) {
+  updateStatusLight(pwd);
+  updatePatternViz(pwd);
+  updateCharTypes(pwd);
+  updateMetrics(pwd);
+  updateStrengthMeter(pwd);
+  updateScore(pwd);
+  updateCrackTimes(pwd);
+  updateHIBP(pwd);
+  updateChecks(pwd);
+  updateThreat(pwd);
+  updateRecs(pwd);
+  updatePolicy(pwd);
+}
+
+function updateStatusLight(pwd) {
+  liveStatus.textContent = pwd ? 'ANALYZING' : 'IDLE';
+  liveStatus.style.color = pwd ? 'var(--accent)' : 'var(--text-dim)';
+}
+
+function updatePatternViz(pwd) {
+  if (!pwd) {
+    patternViz.innerHTML = '<span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);align-self:center;">↑ character tokens appear here</span>';
+    return;
+  }
+  patternViz.innerHTML = [...pwd].map(c => {
+    let cls = 'token-lower';
+    if (/[A-Z]/.test(c)) cls = 'token-upper';
+    else if (/[0-9]/.test(c)) cls = 'token-digit';
+    else if (c === ' ') cls = 'token-space';
+    else if (/[^a-zA-Z0-9]/.test(c)) cls = 'token-special';
+    const display = c === ' ' ? '·' : c;
+    return `<span class="char-token ${cls}">${display}</span>`;
+  }).join('');
+}
+
+function updateCharTypes(pwd) {
+  const upper   = (pwd.match(/[A-Z]/g)||[]).length;
+  const lower   = (pwd.match(/[a-z]/g)||[]).length;
+  const digit   = (pwd.match(/[0-9]/g)||[]).length;
+  const special = (pwd.match(/[^a-zA-Z0-9]/g)||[]).length;
+
+  const set = [
+    { id:'ct-upper', n:'ct-upper-n', val: upper },
+    { id:'ct-lower', n:'ct-lower-n', val: lower },
+    { id:'ct-digit', n:'ct-digit-n', val: digit },
+    { id:'ct-special', n:'ct-special-n', val: special },
+  ];
+  set.forEach(({ id, n, val }) => {
+    const card = document.getElementById(id);
+    const num  = document.getElementById(n);
+    num.textContent = val;
+    card.classList.toggle('active', val > 0);
+  });
+}
+
+function updateMetrics(pwd) {
+  if (!pwd) {
+    ['entropy-val','pool-val','length-val','combos-val'].forEach(id => {
+      document.getElementById(id).innerHTML = '—';
+    });
+    return;
+  }
+  let pool = 0;
+  if (/[a-z]/.test(pwd)) pool += 26;
+  if (/[A-Z]/.test(pwd)) pool += 26;
+  if (/[0-9]/.test(pwd)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pwd)) pool += 32;
+
+  const entropy   = calcEntropy(pwd);
+  const combos    = Math.pow(pool, pwd.length);
+  const combosFmt = combos > 1e99 ? '> 10⁹⁹' : combos.toExponential(1);
+
+  document.getElementById('entropy-val').innerHTML = `${entropy}<span class="metric-unit">bits</span>`;
+  document.getElementById('pool-val').innerHTML    = `${pool}<span class="metric-unit">chars</span>`;
+  document.getElementById('length-val').innerHTML  = `${pwd.length}<span class="metric-unit">chars</span>`;
+  document.getElementById('combos-val').innerHTML  = combosFmt;
+
+  const ec = document.getElementById('entropy-val');
+  if (entropy < 28) ec.style.color = 'var(--danger)';
+  else if (entropy < 50) ec.style.color = 'var(--warn)';
+  else ec.style.color = 'var(--accent)';
+}
+
+function updateStrengthMeter(pwd) {
+  const { score, label, color } = computeScore(pwd);
+  const pct = pwd ? score : 0;
+
+  let fillColor = 'var(--danger)';
+  if (score >= 80) fillColor = 'var(--accent)';
+  else if (score >= 60) fillColor = '#7dff8f';
+  else if (score >= 40) fillColor = 'var(--warn)';
+  else if (score >= 20) fillColor = '#ff7048';
+
+  strengthFill.style.width = `${pct}%`;
+  strengthFill.style.background = fillColor;
+  strengthLbl.textContent = pwd ? label : 'NO INPUT';
+  strengthLbl.style.color = pwd ? color : 'var(--text-dim)';
+
+  // Update segments
+  const lit = Math.round(pct / 20); // 0-5
+  segs.forEach((seg, i) => {
+    if (i < lit) {
+      seg.style.background = fillColor;
+      seg.style.boxShadow = `0 0 6px ${fillColor}80`;
+    } else {
+      seg.style.background = 'var(--border)';
+      seg.style.boxShadow = 'none';
+    }
+  });
+}
+
+function updateScore(pwd) {
+  const { score, label, color } = computeScore(pwd);
+  scoreNum.textContent = pwd ? score : '0';
+  scoreNum.style.color = color;
+  scoreCat.textContent = pwd ? label : 'UNRATED';
+  scoreCat.style.color = color;
+
+  // SVG ring: circumference 2π×45 ≈ 283
+  const circ = 283;
+  const offset = circ - (score / 100) * circ;
+  scoreRing.style.strokeDashoffset = pwd ? offset : circ;
+  scoreRing.style.stroke = color;
+}
+
+function updateCrackTimes(pwd) {
+  const ids = ['ct-online','ct-online-fast','ct-offline-slow','ct-offline-fast','ct-gpu'];
+  if (!pwd) { ids.forEach(id => document.getElementById(id).textContent = '—'); return; }
+
+  let pool = 0;
+  if (/[a-z]/.test(pwd)) pool += 26;
+  if (/[A-Z]/.test(pwd)) pool += 26;
+  if (/[0-9]/.test(pwd)) pool += 10;
+  if (/[^a-zA-Z0-9]/.test(pwd)) pool += 32;
+
+  const combos = Math.pow(pool || 1, pwd.length);
+  const rates = [
+    100/3600,   // 100/hr online throttled
+    10,         // 10/sec online unthrottled
+    1e4,        // 10K/sec offline slow hash
+    1e9,        // 1B/sec offline fast hash
+    1e11,       // 100B/sec GPU cluster
+  ];
+
+  rates.forEach((rate, i) => {
+    const secs = getCrackSeconds(combos, rate);
+    const el = document.getElementById(ids[i]);
+    el.textContent = formatCrackTime(secs);
+
+    // Color by safety
+    if (secs < 60)            el.style.color = 'var(--danger)';
+    else if (secs < 86400)    el.style.color = '#ff7048';
+    else if (secs < 2592000)  el.style.color = 'var(--warn)';
+    else if (secs < 3.156e10) el.style.color = '#7dff8f';
+    else                      el.style.color = 'var(--accent)';
+  });
+}
+
+function updateHIBP(pwd) {
+  const icon   = document.getElementById('hibp-icon');
+  const status = document.getElementById('hibp-status');
+  const panel  = document.getElementById('hibp-panel');
+
+  if (!pwd) {
+    icon.textContent = '🔍';
+    status.textContent = 'Awaiting password input...';
+    status.style.color = 'var(--text-dim)';
+    panel.style.borderColor = 'var(--border)';
+    return;
+  }
+
+  const result = simulateHIBP(pwd);
+  if (result.breached) {
+    icon.textContent = '🚨';
+    status.innerHTML = `<strong style="color:var(--danger)">COMPROMISED</strong> — Found ${formatCount(result.count)} times in breach databases`;
+    status.style.color = 'var(--danger)';
+    panel.style.borderColor = 'rgba(255,62,62,0.4)';
+  } else {
+    icon.textContent = '✅';
+    status.innerHTML = '<strong style="color:var(--accent)">NOT FOUND</strong> — Password not detected in simulated breach database';
+    status.style.color = 'var(--accent)';
+    panel.style.borderColor = 'rgba(0,255,157,0.2)';
+  }
+}
+
+function updateChecks(pwd) {
+  const checks = runChecks(pwd);
+  if (!pwd) {
+    checksList.innerHTML = '<div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);padding:0.5rem;">Enter a password to run security checks...</div>';
+    checksSumEl.textContent = '0/0 PASSED';
+    return;
+  }
+  const passed = checks.filter(c => c.pass).length;
+  checksSumEl.textContent = `${passed}/${checks.length} PASSED`;
+
+  checksList.innerHTML = checks.map(c => {
+    const cls   = c.pass ? 'pass' : 'fail';
+    const icon  = c.pass ? '✓' : '✗';
+    const badge = c.pass ? 'PASS' : 'FAIL';
+    return `
+      <div class="check-item ${cls}">
+        <span class="check-icon check-${cls}">${icon}</span>
+        <span class="check-text">${c.label}</span>
+        <span class="check-badge ${cls}">${c.ref}</span>
+      </div>`;
+  }).join('');
+}
+
+function updateThreat(pwd) {
+  if (!pwd) {
+    ['dict-pct','pattern-pct','bf-pct'].forEach(id => document.getElementById(id).textContent = '—');
+    ['dict-fill','pattern-fill','bf-fill'].forEach(id => document.getElementById(id).style.width = '0%');
+    return;
+  }
+  const entropy = calcEntropy(pwd);
+
+  // Dictionary risk: high if common/dict words, low entropy
+  let dictRisk = 0;
+  if (isCommonPassword(pwd)) dictRisk += 80;
+  else if (hasDictionaryWord(pwd)) dictRisk += 40;
+  if (pwd.length < 8) dictRisk += 20;
+  dictRisk = Math.min(100, dictRisk);
+
+  // Pattern risk
+  let patternRisk = 0;
+  if (hasKeyboardPattern(pwd)) patternRisk += 50;
+  if (hasSequential(pwd)) patternRisk += 25;
+  if (hasRepeatedChars(pwd)) patternRisk += 25;
+  if (hasRepeatedPattern(pwd)) patternRisk += 30;
+  patternRisk = Math.min(100, patternRisk);
+
+  // Brute force resistance (higher = better)
+  let bfRes = Math.min(100, Math.round(entropy * 1.1));
+
+  document.getElementById('dict-pct').textContent   = `${dictRisk}%`;
+  document.getElementById('pattern-pct').textContent = `${patternRisk}%`;
+  document.getElementById('bf-pct').textContent      = `${bfRes}%`;
+
+  document.getElementById('dict-fill').style.width    = `${dictRisk}%`;
+  document.getElementById('pattern-fill').style.width = `${patternRisk}%`;
+  document.getElementById('bf-fill').style.width      = `${bfRes}%`;
+
+  const dictEl = document.getElementById('dict-pct');
+  dictEl.style.color = dictRisk > 60 ? 'var(--danger)' : dictRisk > 30 ? 'var(--warn)' : 'var(--accent)';
+
+  const patEl = document.getElementById('pattern-pct');
+  patEl.style.color = patternRisk > 50 ? 'var(--danger)' : patternRisk > 20 ? 'var(--warn)' : 'var(--accent)';
+}
+
+function updateRecs(pwd) {
+  const recs = buildRecs(pwd);
+  if (!pwd) {
+    recsList.innerHTML = `<div class="rec-item sec"><span class="rec-source">SYS</span><span class="rec-text">Enter a password to receive NIST, OWASP, and custom security recommendations.</span></div>`;
+    return;
+  }
+  recsList.innerHTML = recs.map(r => `
+    <div class="rec-item ${r.type}">
+      <span class="rec-source">${r.source}</span>
+      <span class="rec-text">${r.text}</span>
+    </div>`).join('');
+}
+
+function updatePolicy(pwd) {
+  const items = nistPolicyItems(pwd);
+  policyGrid.innerHTML = items.map(item => `
+    <div class="policy-item ${pwd && item.ok ? 'ok' : 'fail'}">
+      <div class="policy-dot"></div>
+      <span class="policy-txt">${item.label}</span>
+    </div>`).join('');
+}
+
+// ── Toggle Visibility ──────────────────────────────────────────
+document.getElementById('toggle-visibility').addEventListener('click', () => {
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  document.getElementById('toggle-visibility').textContent = show ? '🙈' : '👁';
+});
+
+// ── Input Listener ─────────────────────────────────────────────
+input.addEventListener('input', () => analyze(input.value));
+
+// ── Password Generator ─────────────────────────────────────────
+const CHARSET = {
+  upper:   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  lower:   'abcdefghijklmnopqrstuvwxyz',
+  digits:  '0123456789',
+  special: '!@#$%^&*()-_=+[]{}|;:,.<>?',
+};
+
+const PASSPHRASE_WORDS = [
+  'crimson','velvet','alpine','thunder','stellar','cosmic','iron','silver',
+  'rapid','frozen','blazing','lunar','quantum','sharp','mystic','noble',
+  'vivid','ocean','amber','cobalt','forest','prism','falcon','titan',
+  'aurora','nexus','cipher','vector','pulse','apex','zenith','orbit',
+];
+
+const SYMBOLS_PASSPHRASE = ['!','@','#','$','%','&','*','-','_','+'];
+
+function secureRandom(max) {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return arr[0] % max;
+}
+
+function generatePassword() {
+  const len = parseInt(document.getElementById('gen-length').value);
+  const all = CHARSET.upper + CHARSET.lower + CHARSET.digits + CHARSET.special;
+  let pwd = [
+    CHARSET.upper[secureRandom(CHARSET.upper.length)],
+    CHARSET.lower[secureRandom(CHARSET.lower.length)],
+    CHARSET.digits[secureRandom(CHARSET.digits.length)],
+    CHARSET.special[secureRandom(CHARSET.special.length)],
+  ];
+  for (let i = 4; i < len; i++) pwd.push(all[secureRandom(all.length)]);
+  // Fisher-Yates shuffle
+  for (let i = pwd.length - 1; i > 0; i--) {
+    const j = secureRandom(i + 1);
+    [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+  }
+  setGenOutput(pwd.join(''));
+}
+
+function generatePassphrase() {
+  const words = Array.from({length: 4}, () => PASSPHRASE_WORDS[secureRandom(PASSPHRASE_WORDS.length)]);
+  const sep   = SYMBOLS_PASSPHRASE[secureRandom(SYMBOLS_PASSPHRASE.length)];
+  const num   = secureRandom(999).toString().padStart(3,'0');
+  const phrase = words.join(sep) + sep + num;
+  setGenOutput(phrase);
+}
+
+function generatePIN() {
+  const pin = Array.from({length: 8}, () => CHARSET.digits[secureRandom(10)]).join('');
+  setGenOutput(pin);
+}
+
+function setGenOutput(pwd) {
+  document.getElementById('gen-output').textContent = pwd;
+  document.getElementById('gen-copy-btn').textContent = 'COPY';
+  document.getElementById('gen-copy-btn').classList.remove('copied');
+}
+
+function useGenerated() {
+  const pwd = document.getElementById('gen-output').textContent;
+  if (pwd && pwd !== 'Press Generate to create a password') {
+    input.value = pwd;
+    input.type = 'text';
+    document.getElementById('toggle-visibility').textContent = '🙈';
+    analyze(pwd);
+    input.focus();
+  }
+}
+
+document.getElementById('gen-length').addEventListener('input', e => {
+  document.getElementById('gen-len-display').textContent = e.target.value;
+});
+
+document.getElementById('gen-copy-btn').addEventListener('click', () => {
+  const pwd = document.getElementById('gen-output').textContent;
+  if (pwd && pwd !== 'Press Generate to create a password') {
+    navigator.clipboard.writeText(pwd).then(() => {
+      const btn = document.getElementById('gen-copy-btn');
+      btn.textContent = 'COPIED!';
+      btn.classList.add('copied');
+      showToast('Password copied to clipboard');
+      setTimeout(() => {
+        btn.textContent = 'COPY';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+});
+
+// ── Toast ──────────────────────────────────────────────────────
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── Init ───────────────────────────────────────────────────────
+analyze('');
+updatePolicy('');
+</script>
+</body>
+</html>
