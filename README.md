@@ -174,13 +174,21 @@ http://localhost:8080
 # 📸 Screenshots
 
 ## Dashboard
-(Add screenshot here)
+
+<img width="1297" height="1545" alt="image" src="https://github.com/user-attachments/assets/089217d1-6b40-405f-834f-0ea953fd64d2" />
+
 
 ## Password Analysis
-(Add screenshot here)
 
-## Secure Password Generator
-(Add screenshot here)
+<img width="1305" height="1833" alt="image" src="https://github.com/user-attachments/assets/4809e484-d956-4f4e-b6aa-503b090ee546" />
+
+
+<img width="1306" height="2045" alt="image" src="https://github.com/user-attachments/assets/44ec016e-9229-4e1b-b093-c419c17ba248" />
+
+
+<img width="1306" height="2033" alt="image" src="https://github.com/user-attachments/assets/e7498d1a-fcaa-40ec-8ca2-6f4dd3cba83d" />
+
+
 
 ---
 
@@ -205,22 +213,6 @@ No telemetry collection.
 
 ---
 
-## Cryptographically Secure Randomness
-
-Uses:
-
-```javascript
-crypto.getRandomValues()
-```
-
-instead of insecure pseudo-random generators like:
-
-```javascript
-Math.random()
-```
-
----
-
 # 📊 Skills Demonstrated
 
 This project demonstrates:
@@ -235,17 +227,6 @@ This project demonstrates:
 - NIST 800-63B Implementation
 - MITRE ATT&CK Mapping
 - JavaScript Security Tooling
-
----
-
-# 👨‍💻 Target Roles
-
-✅ SOC Analyst  
-✅ Security Engineer  
-✅ AppSec Engineer  
-✅ IAM Engineer  
-✅ Detection Engineer  
-✅ Junior Cybersecurity Analyst  
 
 ---
 
